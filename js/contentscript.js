@@ -177,6 +177,10 @@ function clickEmulate(elem,button,wurl){
 		clcik(elem,optobj.r,optobj.rurl);	
 	}else if(button === "bg"){
 		chrome.runtime.sendMessage({tab: "newbg",url:elem.href});
+	}else if(button === "bgrel"){
+		chrome.runtime.sendMessage({tab: "newbgrel",url:elem.href});
+	}else if(button === "newrel"){
+		chrome.runtime.sendMessage({tab: "newrel",url:elem.href});
 	}else if(button === "new"){
 		chrome.runtime.sendMessage({tab: "new",url:elem.href});
 	}else if(button === "crnt"){
@@ -198,6 +202,12 @@ function clickEmulate(elem,button,wurl){
 		if(no === "bg"){
 			flg = false;
 			chrome.runtime.sendMessage({tab:"newbg",url:elem.href});
+		}else if(no === "bgrel"){
+			flg = false;
+			chrome.runtime.sendMessage({tab:"newbgrel",url:elem.href});
+		}else if(no === "newrel"){
+			flg = false;
+			chrome.runtime.sendMessage({tab:"newrel",url:elem.href});
 		}else if(no === "wnd"){
 			shift = true;					
 		}else if(no === "new"){

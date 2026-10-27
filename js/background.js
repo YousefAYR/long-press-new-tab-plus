@@ -38,7 +38,7 @@ function loadOption(){
 		optobj = JSON.parse(lclobj);
 	}else{
 		optobj.excpetoptionarray = [];
-		optobj.l = "bg";
+		optobj.l = "bgrel";
 		optobj.m = "none";
 		optobj.r = "none";
 		optobj.waittime = 350;
@@ -61,6 +61,22 @@ function downloadItems(url){
     var opt = {saveAs:true,url:url};
     chrome.downloads.download(opt,function(dlid){
     });
+}
+// Open a tab the way Firefox's "Open Link in New Tab" does: linked to the
+// source tab, placed after the tabs already opened from it, in the same container.
+function openRelatedTab(url,srctab,active){
+	chrome.tabs.query({windowId:srctab.windowId},function(tabs){
+		tabs.sort(function(a,b){return a.index - b.index});
+		var idx = srctab.index + 1;
+		while(tabs[idx] && tabs[idx].openerTabId === srctab.id){
+			idx++;
+		}
+		var opt = {url:url,active:active,index:idx,openerTabId:srctab.id,windowId:srctab.windowId};
+		if(srctab.cookieStoreId){
+			opt.cookieStoreId = srctab.cookieStoreId;
+		}
+		chrome.tabs.create(opt);
+	});
 }
 function copyStrings(str){
     var inpt = document.createElement("input");
@@ -97,6 +113,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }else if(request.tab == "newbg"){
 		var url = request.url;
 		chrome.tabs.create({url:url,active:false});
+        sendResponse({});
+    }else if(request.tab == "newbgrel"){
+		openRelatedTab(request.url,sender.tab,false);
+        sendResponse({});
+    }else if(request.tab == "newrel"){
+		openRelatedTab(request.url,sender.tab,true);
         sendResponse({});
     }else if(request.tab == "save"){
 		var url = request.url;
