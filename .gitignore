@@ -2,3 +2,4 @@
 META-INF/
 *.xpi
 *.zip
+web-ext-artifacts/
