@@ -1,5 +1,6 @@
 var optobj = {};
 var relatedtabs = {};
+var removedtabs = {};
 function checkExceptList(url,list){
 	if(list){
 		var len = list.length;
@@ -107,7 +108,9 @@ function updateSuccessor(windowid){
 	chrome.tabs.query({windowId:windowid},function(tabs){
 		if(chrome.runtime.lastError)return;
 		var byid = {};
+		// A closing tab stays listed until its close animation ends.
 		var visible = tabs.filter(function(t){
+			if(removedtabs[t.id])return false;
 			byid[t.id] = t;
 			return !t.hidden;
 		}).sort(function(a,b){return a.index - b.index});
@@ -142,6 +145,7 @@ chrome.tabs.onAttached.addListener(function(id,info){onTabsChanged(info.newWindo
 chrome.tabs.onDetached.addListener(function(id,info){onTabsChanged(info.oldWindowId)});
 chrome.tabs.onRemoved.addListener(function(id,info){
 	var parentid = relatedtabs[id];
+	removedtabs[id] = true;
 	delete relatedtabs[id];
 	if(parentid !== undefined){
 		for(var childid in relatedtabs){
