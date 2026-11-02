@@ -1,4 +1,5 @@
 var optobj = {};
+var relatedtabs = {};
 function checkExceptList(url,list){
 	if(list){
 		var len = list.length;
@@ -66,18 +67,89 @@ function downloadItems(url){
 // source tab, placed after the tabs already opened from it, in the same container.
 function openRelatedTab(url,srctab,active){
 	chrome.tabs.query({windowId:srctab.windowId},function(tabs){
+		var byid = {};
+		tabs.forEach(function(t){byid[t.id] = t});
 		tabs.sort(function(a,b){return a.index - b.index});
 		var idx = srctab.index + 1;
-		while(tabs[idx] && tabs[idx].openerTabId === srctab.id){
+		while(tabs[idx] && isDescendantOf(tabs[idx],srctab.id,byid)){
 			idx++;
 		}
 		var opt = {url:url,active:active,index:idx,openerTabId:srctab.id,windowId:srctab.windowId};
 		if(srctab.cookieStoreId){
 			opt.cookieStoreId = srctab.cookieStoreId;
 		}
-		chrome.tabs.create(opt);
+		chrome.tabs.create(opt,function(tab){
+			if(chrome.runtime.lastError || !tab)return;
+			relatedtabs[tab.id] = srctab.id;
+			updateSuccessor(tab.windowId);
+		});
 	});
 }
+function getParentId(tab){
+	var parentid = relatedtabs[tab.id];
+	return parentid !== undefined ? parentid : tab.openerTabId;
+}
+function isDescendantOf(tab,parentid,byid){
+	var seen = {};
+	while(tab && !seen[tab.id]){
+		var crntparent = getParentId(tab);
+		if(crntparent === undefined)return false;
+		if(crntparent === parentid)return true;
+		seen[tab.id] = true;
+		tab = byid[crntparent];
+	}
+	return false;
+}
+// When the active tab was opened by openRelatedTab, closing it selects the tab
+// on its right under the same parent, else the one on its left, else the parent.
+// Closing a parent moves its children up a level, so this repeats up the tree.
+function updateSuccessor(windowid){
+	chrome.tabs.query({windowId:windowid},function(tabs){
+		if(chrome.runtime.lastError)return;
+		var byid = {};
+		var visible = tabs.filter(function(t){
+			byid[t.id] = t;
+			return !t.hidden;
+		}).sort(function(a,b){return a.index - b.index});
+		for(var i = 0; i < visible.length; i++){
+			if(visible[i].active)break;
+		}
+		var crnt = visible[i];
+		if(!crnt || relatedtabs[crnt.id] === undefined)return;
+		var parentid = relatedtabs[crnt.id];
+		var right = visible[i + 1];
+		var left = visible[i - 1];
+		var successor = chrome.tabs.TAB_ID_NONE;
+		if(right && isDescendantOf(right,parentid,byid)){
+			successor = right.id;
+		}else if(left && (left.id === parentid || isDescendantOf(left,parentid,byid))){
+			successor = left.id;
+		}else if(byid[parentid]){
+			successor = parentid;
+		}
+		chrome.tabs.update(crnt.id,{successorTabId:successor},function(){
+			void chrome.runtime.lastError;
+		});
+	});
+}
+function onTabsChanged(windowid){
+	if(windowid !== undefined)updateSuccessor(windowid);
+}
+chrome.tabs.onActivated.addListener(function(info){onTabsChanged(info.windowId)});
+chrome.tabs.onCreated.addListener(function(tab){onTabsChanged(tab.windowId)});
+chrome.tabs.onMoved.addListener(function(id,info){onTabsChanged(info.windowId)});
+chrome.tabs.onAttached.addListener(function(id,info){onTabsChanged(info.newWindowId)});
+chrome.tabs.onDetached.addListener(function(id,info){onTabsChanged(info.oldWindowId)});
+chrome.tabs.onRemoved.addListener(function(id,info){
+	var parentid = relatedtabs[id];
+	delete relatedtabs[id];
+	if(parentid !== undefined){
+		for(var childid in relatedtabs){
+			if(relatedtabs[childid] === id)relatedtabs[childid] = parentid;
+		}
+	}
+	if(!info.isWindowClosing)onTabsChanged(info.windowId);
+});
 function copyStrings(str){
     var inpt = document.createElement("input");
     document.body.appendChild(inpt);
