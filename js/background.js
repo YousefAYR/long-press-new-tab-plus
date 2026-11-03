@@ -1,6 +1,8 @@
 var optobj = {};
 var relatedtabs = {};
 var removedtabs = {};
+var removedttl = 60000;
+var lastremovedsweep = 0;
 function checkExceptList(url,list){
 	if(list){
 		var len = list.length;
@@ -86,6 +88,13 @@ function openRelatedTab(url,srctab,active){
 		});
 	});
 }
+function sweepRemovedTabs(now){
+	if(now - lastremovedsweep < removedttl)return;
+	lastremovedsweep = now;
+	for(var id in removedtabs){
+		if(now >= removedtabs[id])delete removedtabs[id];
+	}
+}
 function getParentId(tab){
 	var parentid = relatedtabs[tab.id];
 	return parentid !== undefined ? parentid : tab.openerTabId;
@@ -145,7 +154,9 @@ chrome.tabs.onAttached.addListener(function(id,info){onTabsChanged(info.newWindo
 chrome.tabs.onDetached.addListener(function(id,info){onTabsChanged(info.oldWindowId)});
 chrome.tabs.onRemoved.addListener(function(id,info){
 	var parentid = relatedtabs[id];
-	removedtabs[id] = true;
+	var now = Date.now();
+	sweepRemovedTabs(now);
+	removedtabs[id] = now + removedttl;
 	delete relatedtabs[id];
 	if(parentid !== undefined){
 		for(var childid in relatedtabs){
