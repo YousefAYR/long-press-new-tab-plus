@@ -12,6 +12,9 @@ optobj.dr = "none";
 optobj.du = "none";
 optobj.dd = "none";
 optobj.dxval = 100;
+optobj.splitwait = false;
+optobj.splitdx = false;
+optobj.blockmenu = false;
 optobj.closemode = "tree";
 optobj.selfparent = false;
 
@@ -60,15 +63,20 @@ document.addEventListener("DOMContentLoaded",function(e){
 	}else{
 		optobj.excpetoptionarray = [];
 	}
-	document.getElementById("detectval").value = optobj.waittime;
-	document.getElementById("detectvallbl").textContent = optobj.waittime;
+	setupSplitRows("splitwait","waitrows",waitrows);
 	document.getElementById("dragactionleft").value = optobj.l;
 	if(optobj.m)document.getElementById("dragactionmiddle").value = optobj.m;
 	document.getElementById("dragactionright").value = optobj.r;
-	document.getElementById("detectval").addEventListener("change",changeDetectVal,false);
 	if(optobj.closemode)document.getElementById("closemode").value = optobj.closemode;
 	showCloseModeDesc();
 	document.getElementById("closemode").addEventListener("change",changeCloseMode,false);
+	showBlockMenu();
+	document.getElementById("dragactionright").addEventListener("change",showBlockMenu,false);
+	document.getElementById("blockmenu").checked = !!optobj.blockmenu;
+	document.getElementById("blockmenu").addEventListener("change",function(e){
+		optobj.blockmenu = this.checked;
+		storeOption();
+	},false);
 	document.getElementById("selfparent").checked = !!optobj.selfparent;
 	document.getElementById("selfparent").addEventListener("change",changeSelfParent,false);
 	document.getElementById("addbutton2").addEventListener("click",clickAddButton2,false);
@@ -162,9 +170,7 @@ document.addEventListener("DOMContentLoaded",function(e){
 
 
 	document.getElementById("enabledrag").addEventListener("change",changeEnableDrag,false);
-	document.getElementById("ddetectval").addEventListener("change",dchangeDetectVal,false);
-	document.getElementById("ddetectval").value = optobj.dxval;
-	document.getElementById("ddetectvallbl").textContent = optobj.dxval;
+	setupSplitRows("splitdx","dxrows",dxrows);
 	if(optobj.mdrag){
 		document.getElementById("enabledrag").checked = true;
 		document.getElementById("dragcontainer").style.display = "block"
@@ -223,12 +229,6 @@ function dchangeActionRight(e){
 	optobj.dr = val;
 	storeOption();
 }
-function dchangeDetectVal(e){
-	var val = this.value;
-	document.getElementById("ddetectvallbl").textContent = val;
-	optobj.dxval = val;
-	storeOption();
-}
 function changeEnableDrag(e){
 	if (this.checked) {
 		optobj.mdrag = true;
@@ -239,10 +239,95 @@ function changeEnableDrag(e){
 	};
 	storeOption();
 }
-function changeDetectVal(e){
-	var val = this.value;
-	document.getElementById("detectvallbl").textContent = val;
-	optobj.waittime = val;
+// Durations and drag distances: one shared value, or one per button/direction.
+// "all" is the shared value; the others are used when the split box is checked.
+var waitrows = {
+	splitname: "splitwait", unit: "ms", min: 100, max: 3000, step: 10,
+	all: "waittime",
+	rows: [["waitl","Left button"],["waitm","Middle button"],["waitr","Right button"]]
+};
+var dxrows = {
+	splitname: "splitdx", unit: "pixels", min: 30, max: 500, step: 10,
+	all: "dxval",
+	rows: [["dxup","Up"],["dxdown","Down"],["dxleft","Left"],["dxright","Right"]]
+};
+function setupSplitRows(checkid,containerid,spec){
+	var check = document.getElementById(checkid);
+	check.checked = !!optobj[spec.splitname];
+	showSplitRows(containerid,spec);
+	check.addEventListener("change",function(e){
+		optobj[spec.splitname] = this.checked;
+		showSplitRows(containerid,spec);
+		storeOption();
+	},false);
+}
+function showSplitRows(containerid,spec){
+	var cont = document.getElementById(containerid);
+	cont.textContent = "";
+	if(!optobj[spec.splitname]){
+		addNumberRow(cont,"",spec.all,spec);
+		return;
+	}
+	for(var i = 0; i < spec.rows.length; i++){
+		var optname = spec.rows[i][0];
+		if(optobj[optname] === undefined)optobj[optname] = optobj[spec.all];
+		addNumberRow(cont,spec.rows[i][1],optname,spec);
+	}
+}
+// A slider and a number box that stay in sync and save to optobj[optname].
+function addNumberRow(cont,label,optname,spec){
+	var row = document.createElement("div");
+	row.setAttribute("class","numberrow");
+	cont.appendChild(row);
+	// Three columns: label, slider, number box. The slider column is centered.
+	var lbl = document.createElement("label");
+	lbl.setAttribute("class","numberrowlabel");
+	lbl.textContent = label;
+	row.appendChild(lbl);
+	var range = document.createElement("input");
+	range.setAttribute("type","range");
+	range.min = spec.min;
+	range.max = spec.max;
+	range.step = spec.step;
+	row.appendChild(range);
+	var num = document.createElement("input");
+	num.setAttribute("type","number");
+	num.setAttribute("class","numberinput");
+	num.min = spec.min;
+	num.max = spec.max;
+	num.step = 1;
+	var numcell = document.createElement("span");
+	numcell.setAttribute("class","numbercell");
+	numcell.appendChild(num);
+	numcell.appendChild(document.createTextNode(spec.unit));
+	row.appendChild(numcell);
+	range.value = num.value = optobj[optname];
+	range.addEventListener("input",function(e){
+		num.value = range.value;
+	},false);
+	range.addEventListener("change",function(e){
+		setNumberOption(optname,range.value);
+	},false);
+	// Move the slider while typing; save once the value is committed.
+	num.addEventListener("input",function(e){
+		var val = parseInt(num.value,10);
+		if(!isNaN(val))range.value = val;
+	},false);
+	num.addEventListener("change",function(e){
+		var val = parseInt(num.value,10);
+		if(isNaN(val))val = optobj[optname];
+		val = Math.min(spec.max,Math.max(spec.min,val));
+		num.value = range.value = val;
+		setNumberOption(optname,val);
+	},false);
+}
+// The context menu option only matters when the right button has an action.
+function showBlockMenu(){
+	var val = document.getElementById("dragactionright").value;
+	document.getElementById("blockmenucontainer").style.display = val === "none" ? "none" : "block";
+}
+function setNumberOption(optname,val){
+	optobj[optname] = val - 0;
 	storeOption();
 }
 var closemodedescs = {

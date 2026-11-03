@@ -18,14 +18,44 @@ document.addEventListener("visibilitychange", function(e){
 	mouseupflag = true;
 	clearTimeout(eventtimerid);
 }, false);
+// The menu opens on button down on macOS, so it is blocked on links up front
+// when that option is on. Shift+right-click and Ctrl+click still open it.
+function blocksMenu(e){
+	if(!optobj.blockmenu || !optobj.r || optobj.r === "none")return false;
+	if(e.button !== 2 || e.shiftKey || e.ctrlKey)return false;
+	for(var elem = e.target; elem; elem = elem.parentNode){
+		if(elem.tagName === "A")return true;
+	}
+	return false;
+}
 window.addEventListener("contextmenu",function(e){
-	if(canselclickflag){
+	if(canselclickflag || blocksMenu(e)){
 		e.preventDefault();
 		e.stopPropagation();
 	}
 	canselclickflag = false;
 },true);
 
+// Load the settings up front and again whenever they change: on macOS the
+// context menu event follows mousedown before settings requested there arrive.
+function loadSettings(){
+	chrome.runtime.sendMessage({stat:"init",url:host},function(resp){
+		optobj = (resp && resp.opt && resp.opt.l) ? resp.opt : {};
+	});
+}
+loadSettings();
+chrome.runtime.onMessage.addListener(function(request){
+	if(request.stat === "optchanged")loadSettings();
+});
+// After a middle-button hold runs its action, stop Firefox's own middle-click
+// from also opening the link when the button is released.
+window.addEventListener("auxclick",function(e){
+	if(e.button === 1 && canselclickflag){
+		e.preventDefault();
+		e.stopPropagation();
+		canselclickflag = false;
+	}
+},true);
 function addTag(){
 	if(!addeventflag){
 		addeventflag = true;
@@ -90,7 +120,7 @@ function checkA(elem,button,e,mode){
 					eventtimerid = setTimeout(function(){
 						clickEmulate(elem,button);
 						canselclickflag = true;
-					},optobj.waittime);	
+					},getWaitTime(button));
 				}
 			}
 		});
@@ -107,6 +137,21 @@ function checkA(elem,button,e,mode){
 		delem = null;
 	}
 }
+// Per-button and per-direction values apply only when their split option is on.
+function getWaitTime(button){
+	if(optobj.splitwait){
+		var val = [optobj.waitl,optobj.waitm,optobj.waitr][button];
+		if(val !== undefined)return val - 0;
+	}
+	return optobj.waittime - 0;
+}
+function getDragDistance(dir){
+	if(optobj.splitdx){
+		var val = optobj["dx" + dir];
+		if(val !== undefined)return val - 0;
+	}
+	return optobj.dxval - 0;
+}
 function checkPostion(e){
 	var flg = null;
 	if(delem&&!cancelflg&&X&&Y){
@@ -116,14 +161,13 @@ function checkPostion(e){
 			e.stopPropagation();
 			var x = e.screenX;
 			var y = e.screenY;
-			optobj.dxval = optobj.dxval -0;
-			if(y >= (Y+optobj.dxval)){
+			if(y >= (Y+getDragDistance("down"))){
 				flg = "down";
-			}else if(y <= (Y-optobj.dxval)){
+			}else if(y <= (Y-getDragDistance("up"))){
 				flg = "up";
-			}else if(x >= (X+optobj.dxval)){
+			}else if(x >= (X+getDragDistance("right"))){
 				flg = "right";
-			}else if(x <= (X-optobj.dxval)){
+			}else if(x <= (X-getDragDistance("left"))){
 				flg = "left";
 			}
 			if(flg){

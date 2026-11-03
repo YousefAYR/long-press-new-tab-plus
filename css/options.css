@@ -14,9 +14,28 @@ h3{
 	float:left;
 }
 .web_service_url_input{
+    display: block;
     font: 13px;
-    width: 240px;
+    width: 100%;
+    box-sizing: border-box;
     padding: 4px;
+}
+/* Label, then dropdown; the web service URL box sits under the dropdown at its width. */
+.actionrow{
+    display: grid;
+    grid-template-columns: var(--labelw) 258px;
+    column-gap: 10px;
+    row-gap: 6px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 6px;
+    font-size: 13px;
+}
+.actionrow > label{
+    text-align: right;
+}
+.urlrow{
+    grid-column: 2;
 }
 .subcont{
 	text-align: center;
@@ -46,11 +65,37 @@ h3{
     padding: 2px;
     margin-bottom: 20px;
 }
-#detectval{
-	width: 300px;
+.numberrow{
+    display: grid;
+    grid-template-columns: 1fr 300px 1fr;
+    column-gap: 14px;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 13px;
 }
-#ddetectval{
-    width: 300px;
+.numberrow input[type=range]{
+    width: 100%;
+    margin: 0;
+}
+.numberrowlabel{
+    text-align: right;
+}
+.numbercell{
+    text-align: left;
+}
+.numberinput{
+    width: 4ch;
+    padding: 1px 2px;
+    text-align: right;
+    margin-right: 6px;
+    font-size: 13px;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.splitlabel{
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 13px;
 }
 #tabposselect{
 	width: 180px;

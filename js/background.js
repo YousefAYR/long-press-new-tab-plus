@@ -4,6 +4,7 @@ var removedtabs = {};
 var removedttl = 60000;
 var lastremovedsweep = 0;
 var activehistory = {};
+var optbroadcasttimer = null;
 function checkExceptList(url,list){
 	if(list){
 		var len = list.length;
@@ -38,8 +39,31 @@ function checkExceptList(url,list){
 }
 function setOption(opt){
 	var oldmode = getCloseMode();
+	var oldmenu = menuBlockKey();
 	optobj = opt;
 	if(getCloseMode() !== oldmode)refreshSuccessors();
+	// Pages fetch settings on mousedown, which is too late only for the context
+	// menu block on macOS. So open pages are told to reload their settings only
+	// when something that block depends on changes. Quick changes are sent once.
+	if(menuBlockKey() !== oldmenu){
+		clearTimeout(optbroadcasttimer);
+		optbroadcasttimer = setTimeout(broadcastOptionChange,300);
+	}
+}
+function menuBlockKey(){
+	return JSON.stringify([!!optobj.blockmenu,optobj.r,optobj.excpetoptionarray]);
+}
+function broadcastOptionChange(){
+	chrome.tabs.query({discarded:false},function(tabs){
+		if(chrome.runtime.lastError)return;
+		tabs.forEach(function(t){
+			// Content scripts only run on web and file pages.
+			if(!t.url || !/^(https?|file):/.test(t.url))return;
+			chrome.tabs.sendMessage(t.id,{stat:"optchanged"},function(){
+				void chrome.runtime.lastError;
+			});
+		});
+	});
 }
 function getCloseMode(){
 	return optobj.closemode || "tree";
@@ -60,6 +84,9 @@ function loadOption(){
 		optobj.du = "none";
 		optobj.dd = "none";
 		optobj.dxval = 100;
+		optobj.splitwait = false;
+		optobj.splitdx = false;
+		optobj.blockmenu = false;
 		optobj.closemode = "tree";
 		optobj.selfparent = false;
         optobj.lurl = "";
