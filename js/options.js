@@ -12,6 +12,8 @@ optobj.dr = "none";
 optobj.du = "none";
 optobj.dd = "none";
 optobj.dxval = 100;
+optobj.closemode = "tree";
+optobj.selfparent = false;
 
 optobj.lurl = "";
 optobj.murl = "";
@@ -21,7 +23,32 @@ optobj.drurl = "";
 optobj.duurl = "";
 optobj.ddurl = "";
 
+// Actions offered in every long-press and drag dropdown, in display order.
+var actionoptions = [
+	["none","NONE"],
+	["bgrel","Open Link in New Tab (Background)"],
+	["newrel","Open Link in New Tab (Foreground)"],
+	["bg","New Tab at End (Background)"],
+	["new","New Tab at End (Foreground)"],
+	["crnt","Current Tab (Forced)"],
+	["save","Save Link"],
+	["copy","Copy"],
+	["web","Send Web Service"],
+	["webbg","Send Web Service(Background)"]
+];
+function fillActionSelects(){
+	var selects = document.querySelectorAll("select.actionselect");
+	for(var i = 0; i < selects.length; i++){
+		for(var j = 0; j < actionoptions.length; j++){
+			var opt = document.createElement("option");
+			opt.value = actionoptions[j][0];
+			opt.textContent = actionoptions[j][1];
+			selects[i].appendChild(opt);
+		}
+	}
+}
 document.addEventListener("DOMContentLoaded",function(e){
+	fillActionSelects();
 	var opt = 	localStorage.getItem("opt_obj");
 	if(opt)optobj = JSON.parse(opt);
 	var eurlary = optobj.excpetoptionarray;
@@ -39,6 +66,11 @@ document.addEventListener("DOMContentLoaded",function(e){
 	if(optobj.m)document.getElementById("dragactionmiddle").value = optobj.m;
 	document.getElementById("dragactionright").value = optobj.r;
 	document.getElementById("detectval").addEventListener("change",changeDetectVal,false);
+	if(optobj.closemode)document.getElementById("closemode").value = optobj.closemode;
+	showCloseModeDesc();
+	document.getElementById("closemode").addEventListener("change",changeCloseMode,false);
+	document.getElementById("selfparent").checked = !!optobj.selfparent;
+	document.getElementById("selfparent").addEventListener("change",changeSelfParent,false);
 	document.getElementById("addbutton2").addEventListener("click",clickAddButton2,false);
 	changeLongPressAction(document.getElementById("dragactionleft"),"l","web_service_lurl_container",true)
 	changeLongPressAction(document.getElementById("dragactionmiddle"),"m","web_service_murl_container",true)
@@ -211,6 +243,26 @@ function changeDetectVal(e){
 	var val = this.value;
 	document.getElementById("detectvallbl").textContent = val;
 	optobj.waittime = val;
+	storeOption();
+}
+var closemodedescs = {
+	tree: "Tabs are grouped under the tab they were opened from. Closing one switches to the next tab in its group, then the previous one, then the tab it came from, and repeats up each level. Tabs you opened yourself (new tab, bookmarks, address bar) use Next tab.",
+	next: "Switches to the tab on the right (below, with vertical tabs). If there is none, switches to the tab on the left (above).",
+	prev: "Switches to the tab you were on before the one you closed. If that tab is gone, uses Next tab.",
+	default: "Leaves it to Firefox, which usually returns to the tab the closed one was opened from, otherwise the tab on the right."
+};
+function showCloseModeDesc(){
+	var val = document.getElementById("closemode").value;
+	document.getElementById("closemodedesc").textContent = closemodedescs[val];
+	document.getElementById("selfparentcontainer").style.display = val === "tree" ? "block" : "none";
+}
+function changeSelfParent(e){
+	optobj.selfparent = this.checked;
+	storeOption();
+}
+function changeCloseMode(e){
+	optobj.closemode = this.value;
+	showCloseModeDesc();
 	storeOption();
 }
 function createExceptItem(inpuval){

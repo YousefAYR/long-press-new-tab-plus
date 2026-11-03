@@ -12,17 +12,7 @@
 		<div style="padding:15px 0 0 25px;text-align: center;">
 			<div style="text-align: center;">
 				<label style="font-size:13px;width:225px;display:inline-block">Left mouse button press</label>
-				<select id="dragactionleft" class="selectclass">
-					<option value="none">NONE</option>
-					<option value="bgrel" selected="">Open Link in New Tab (Background)</option>
-					<option value="newrel">Open Link in New Tab (Foreground)</option>
-					<option value="bg">New Tab at End (Background)</option>
-					<option value="new">New Tab at End (Foreground)</option>
-					<option value="crnt">Current Tab</option>
-					<option value="save">Save Link</option>
-					<option value="copy">Copy</option>
-					<option value="web">Send Web Service</option>
-					<option value="webbg">Send Web Service(Background)</option>
+				<select id="dragactionleft" class="selectclass actionselect">
 				</select>
 				<div style="margin-top: 8px;visibility: hidden;" id="web_service_lurl_container">
 					<label style="font-size:13px;width:232px;display:inline-block"></label>
@@ -31,17 +21,7 @@
 			</div>
 			<div style="text-align: center;visibility: hidden;">
 				<label style="font-size:13px;width:225px;display:inline-block">Middle mouse button press</label>
-				<select id="dragactionmiddle" class="selectclass">
-					<option value="none" selected>NONE</option>
-					<option value="bgrel">Open Link in New Tab (Background)</option>
-					<option value="newrel">Open Link in New Tab (Foreground)</option>
-					<option value="bg">New Tab at End (Background)</option>
-					<option value="new">New Tab at End (Foreground)</option>
-					<option value="crnt">Current Tab</option>
-					<option value="save">Save Link</option>
-					<option value="copy">Copy</option>
-					<option value="web">Send Web Service</option>
-					<option value="webbg">Send Web Service(Background)</option>
+				<select id="dragactionmiddle" class="selectclass actionselect">
 				</select>
 				<div style="margin-top: 8px;visibility: hidden;" id="web_service_murl_container">
 					<label style="font-size:13px;width:232px;display:inline-block"></label>
@@ -50,17 +30,7 @@
 			</div>
 			<div style="text-align: center;">
 				<label style="font-size:13px;width:225px;display:inline-block">Right mouse button press</label>
-				<select id="dragactionright" class="selectclass">
-					<option value="none" selected>NONE</option>
-					<option value="bgrel">Open Link in New Tab (Background)</option>
-					<option value="newrel">Open Link in New Tab (Foreground)</option>
-					<option value="bg">New Tab at End (Background)</option>
-					<option value="new">New Tab at End (Foreground)</option>
-					<option value="crnt">Current Tab</option>
-					<option value="save">Save Link</option>
-					<option value="copy">Copy</option>
-					<option value="web">Send Web Service</option>
-					<option value="webbg">Send Web Service(Background)</option>
+				<select id="dragactionright" class="selectclass actionselect">
 				</select>
 				<div style="margin-top: 8px;visibility: hidden;" id="web_service_rurl_container">
 					<label style="font-size:13px;width:232px;display:inline-block"></label>
@@ -75,6 +45,22 @@
 				<label id="detectvallbl">350</label> ms
 			</div>
 		</div>
+		<div style="padding:35px 0 0 25px">
+			<div style="text-align: center;">
+				<label style="font-size:13px;">After closing a tab, switch to</label><br>
+				<select id="closemode" class="selectclass" style="margin-top: 8px;">
+					<option value="tree" selected>Tree order</option>
+					<option value="next">Next tab</option>
+					<option value="prev">Previously active tab</option>
+					<option value="default">Firefox default</option>
+				</select>
+				<div id="closemodedesc" style="font-size:12px;color:#666;width:420px;margin:8px auto 0;line-height:1.5;"></div>
+				<div id="selfparentcontainer" style="width:420px;margin:12px auto 0;font-size:13px;">
+					<label><input type="checkbox" id="selfparent"> Treat tabs I open myself as children of the current tab</label>
+					<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">New tabs, bookmarks and address-bar tabs are grouped under the tab you were on, so closing one returns there. Restored windows and tabs are left out.</div>
+				</div>
+			</div>
+		</div>
 	</div>
 	<div style="text-align: center;margin: auto;border: solid 1px #ccc; border-radius: 6px; padding: 0 0 90px 0; width: 700px;margin-top:44px">
 		<h3>Drag Link</h3>
@@ -83,17 +69,7 @@
 			<div style="padding:65px 0 0 25px">
 				<div style="text-align: center;">
 					<label style="font-size:13px;width:55px;display:inline-block">Up</label>
-					<select id="ddragactionup" class="selectclass">
-						<option value="none" selected>NONE</option>
-						<option value="bgrel">Open Link in New Tab (Background)</option>
-						<option value="newrel">Open Link in New Tab (Foreground)</option>
-						<option value="bg">New Tab at End (Background)</option>
-						<option value="new">New Tab at End (Foreground)</option>
-						<option value="crnt">Current Tab</option>
-						<option value="save">Save Link</option>
-						<option value="copy">Copy</option>
-						<option value="web">Send Web Service</option>
-						<option value="webbg">Send Web Service(Background)</option>					
+					<select id="ddragactionup" class="selectclass actionselect">
 					</select>
 					<div style="margin-top: 8px;visibility: hidden;" id="web_service_duurl_container">
 						<label style="font-size:13px;width:90px;display:inline-block"></label>
@@ -102,17 +78,7 @@
 				</div>
 				<div style="text-align: center;margin-top: 24px;">
 					<label style="font-size:13px;width:55px;display:inline-block">Down</label>
-					<select id="ddragactiondown" class="selectclass">
-						<option value="none" selected>NONE</option>
-						<option value="bgrel">Open Link in New Tab (Background)</option>
-						<option value="newrel">Open Link in New Tab (Foreground)</option>
-						<option value="bg">New Tab at End (Background)</option>
-						<option value="new">New Tab at End (Foreground)</option>
-						<option value="crnt">Current Tab</option>
-						<option value="save">Save Link</option>
-						<option value="copy">Copy</option>
-						<option value="web">Send Web Service</option>
-						<option value="webbg">Send Web Service(Background)</option>											
+					<select id="ddragactiondown" class="selectclass actionselect">
 					</select>
 					<div style="margin-top: 8px;visibility: hidden;" id="web_service_ddurl_container">
 						<label style="font-size:13px;width:90px;display:inline-block"></label>
@@ -121,17 +87,7 @@
 				</div>
 				<div style="text-align: center;margin-top: 24px;">
 					<label style="font-size:13px;width:55px;display:inline-block">Left</label>
-					<select id="ddragactionleft" class="selectclass">
-						<option value="none" selected>NONE</option>
-						<option value="bgrel">Open Link in New Tab (Background)</option>
-						<option value="newrel">Open Link in New Tab (Foreground)</option>
-						<option value="bg">New Tab at End (Background)</option>
-						<option value="new">New Tab at End (Foreground)</option>
-						<option value="crnt">Current Tab</option>
-						<option value="save">Save Link</option>
-						<option value="copy">Copy</option>
-						<option value="web">Send Web Service</option>
-						<option value="webbg">Send Web Service(Background)</option>																	
+					<select id="ddragactionleft" class="selectclass actionselect">
 					</select>
 					<div style="margin-top: 8px;visibility: hidden;" id="web_service_dlurl_container">
 						<label style="font-size:13px;width:90px;display:inline-block"></label>
@@ -140,17 +96,7 @@
 				</div>
 				<div style="text-align: center;margin-top: 24px;">
 					<label style="font-size:13px;width:55px;display:inline-block">Right</label>
-					<select id="ddragactionright" class="selectclass">
-						<option value="none" selected>NONE</option>
-						<option value="bgrel">Open Link in New Tab (Background)</option>
-						<option value="newrel">Open Link in New Tab (Foreground)</option>
-						<option value="bg">New Tab at End (Background)</option>
-						<option value="new">New Tab at End (Foreground)</option>
-						<option value="crnt">Current Tab</option>
-						<option value="save">Save Link</option>
-						<option value="copy">Copy</option>
-						<option value="web">Send Web Service</option>
-						<option value="webbg">Send Web Service(Background)</option>											
+					<select id="ddragactionright" class="selectclass actionselect">
 					</select>
 					<div style="margin-top: 8px;visibility: hidden;" id="web_service_drurl_container">
 						<label style="font-size:13px;width:90px;display:inline-block"></label>
