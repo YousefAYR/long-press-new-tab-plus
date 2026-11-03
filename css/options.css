@@ -34,8 +34,25 @@ h3{
 .actionrow > label{
     text-align: right;
 }
-.urlrow{
+/* The URL box and the container dropdown share the slot under the dropdown. */
+.urlrow, .ctrselect{
     grid-column: 2;
+    grid-row: 2;
+}
+.slotlabel{
+    grid-column: 1;
+    grid-row: 2;
+    white-space: nowrap;
+}
+.slotnote{
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 11px;
+    color: #666;
+    line-height: 13px;
+    max-height: 28px;
+    overflow: hidden;
+    text-align: left;
 }
 .subcont{
 	text-align: center;

@@ -41,19 +41,21 @@ function checkExceptList(url,list){
 }
 function setOption(opt){
 	var oldmode = getCloseMode();
-	var oldmenu = menuBlockKey();
+	var oldpage = pageSettingsKey();
 	optobj = opt;
 	if(getCloseMode() !== oldmode)refreshSuccessors();
-	// Pages fetch settings on mousedown, which is too late only for the context
-	// menu block on macOS. So open pages are told to reload their settings only
-	// when something that block depends on changes. Quick changes are sent once.
-	if(menuBlockKey() !== oldmenu){
+	// Pages fetch settings on a link's mousedown, which is too late for the
+	// context menu block on macOS and isn't done away from links (Close Current
+	// Tab). So open pages are told to reload their settings when something those
+	// use changes. Quick changes are sent once.
+	if(pageSettingsKey() !== oldpage){
 		clearTimeout(optbroadcasttimer);
 		optbroadcasttimer = setTimeout(broadcastOptionChange,300);
 	}
 }
-function menuBlockKey(){
-	return JSON.stringify([!!optobj.blockmenu,optobj.r,optobj.excpetoptionarray]);
+function pageSettingsKey(){
+	return JSON.stringify([!!optobj.blockmenu,optobj.l,optobj.m,optobj.r,optobj.excpetoptionarray,
+		optobj.waittime,!!optobj.splitwait,optobj.waitl,optobj.waitm,optobj.waitr]);
 }
 function broadcastOptionChange(){
 	chrome.tabs.query({discarded:false},function(tabs){
@@ -136,9 +138,43 @@ function downloadItems(url){
     chrome.downloads.download(opt,function(dlid){
     });
 }
+// Container behavior for new tabs: "current" keeps the source tab's container
+// (or none), "none" opens outside any container, anything else is the
+// cookieStoreId of a specific container. Without a setting (web service
+// actions) the tab opens in Firefox's default. Private windows keep their own.
+function withContainer(opt,srctab,ctr){
+	if(!ctr || srctab.incognito)return opt;
+	if(ctr === "current"){
+		if(srctab.cookieStoreId)opt.cookieStoreId = srctab.cookieStoreId;
+	}else if(ctr === "none"){
+		opt.cookieStoreId = "firefox-default";
+	}else{
+		opt.cookieStoreId = ctr;
+	}
+	return opt;
+}
+// A container that was deleted since it was chosen falls back to no container.
+// It has to be named: without one, a tab with an opener takes the opener's.
+function createTab(opt,callback){
+	chrome.tabs.create(opt,function(tab){
+		if(chrome.runtime.lastError && opt.cookieStoreId){
+			if(opt.cookieStoreId !== "firefox-default"){
+				opt.cookieStoreId = "firefox-default";
+			}else{
+				delete opt.cookieStoreId;
+			}
+			chrome.tabs.create(opt,function(tab){
+				void chrome.runtime.lastError;
+				if(callback && tab)callback(tab);
+			});
+			return;
+		}
+		if(callback && tab)callback(tab);
+	});
+}
 // Open a tab the way Firefox's "Open Link in New Tab" does: linked to the
-// source tab, placed after the tabs already opened from it, in the same container.
-function openRelatedTab(url,srctab,active){
+// source tab, placed after the tabs already opened from it, in the chosen container.
+function openRelatedTab(url,srctab,active,ctr){
 	chrome.tabs.query({windowId:srctab.windowId},function(tabs){
 		var byid = {};
 		tabs.forEach(function(t){byid[t.id] = t});
@@ -148,11 +184,7 @@ function openRelatedTab(url,srctab,active){
 			idx++;
 		}
 		var opt = {url:url,active:active,index:idx,openerTabId:srctab.id,windowId:srctab.windowId};
-		if(srctab.cookieStoreId){
-			opt.cookieStoreId = srctab.cookieStoreId;
-		}
-		chrome.tabs.create(opt,function(tab){
-			if(chrome.runtime.lastError || !tab)return;
+		createTab(withContainer(opt,srctab,ctr || "current"),function(tab){
 			tabparents[tab.id] = srctab.id;
 			updateSuccessor(tab.windowId);
 		});
@@ -405,18 +437,21 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 		}
         sendResponse({});
     }else if(request.tab == "new"){
-		var url = request.url;
-		chrome.tabs.create({url:url,active:true});
+		createTab(withContainer({url:request.url,active:true},sender.tab,request.ctr));
         sendResponse({});
     }else if(request.tab == "newbg"){
-		var url = request.url;
-		chrome.tabs.create({url:url,active:false});
+		createTab(withContainer({url:request.url,active:false},sender.tab,request.ctr));
         sendResponse({});
     }else if(request.tab == "newbgrel"){
-		openRelatedTab(request.url,sender.tab,false);
+		openRelatedTab(request.url,sender.tab,false,request.ctr);
         sendResponse({});
     }else if(request.tab == "newrel"){
-		openRelatedTab(request.url,sender.tab,true);
+		openRelatedTab(request.url,sender.tab,true,request.ctr);
+        sendResponse({});
+    }else if(request.tab == "close"){
+		chrome.tabs.remove(sender.tab.id,function(){
+			void chrome.runtime.lastError;
+		});
         sendResponse({});
     }else if(request.tab == "save"){
 		var url = request.url;

@@ -33,12 +33,78 @@ var actionoptions = [
 	["newrel","Open Link in New Tab (Foreground)"],
 	["bg","New Tab at End (Background)"],
 	["new","New Tab at End (Foreground)"],
-	["crnt","Current Tab (Forced)"],
+	["crnt","Open in Current Tab (Forced)"],
+	["closetab","Close Current Tab"],
 	["save","Save Link"],
 	["copy","Copy"],
 	["web","Send Web Service"],
 	["webbg","Send Web Service(Background)"]
 ];
+// Each action dropdown and the setting name its choices are saved under.
+var actionrows = [
+	["dragactionleft","l"],["dragactionmiddle","m"],["dragactionright","r"],
+	["ddragactionup","du"],["ddragactiondown","dd"],["ddragactionleft","dl"],["ddragactionright","dr"]
+];
+var newtabactions = ["bgrel","newrel","bg","new"];
+var closetabnote = "Works anywhere except text fields and scrollbars. Moving the mouse cancels it.";
+// Under each action dropdown is one slot: the URL box for a web service, or the
+// container behavior for a new tab action.
+function setupContainerRows(){
+	var selects = [];
+	for(var i = 0; i < actionrows.length; i++){
+		var actionsel = document.getElementById(actionrows[i][0]);
+		var optname = actionrows[i][1] + "ctr";
+		var lbl = document.createElement("label");
+		lbl.setAttribute("class","slotlabel");
+		lbl.textContent = "Container behavior";
+		var sel = document.createElement("select");
+		sel.setAttribute("class","selectclass ctrselect");
+		addOption(sel,"current","Current container");
+		addOption(sel,"none","No container");
+		sel.optname = optname;
+		sel.value = optobj[optname] || "current";
+		sel.addEventListener("change",function(e){
+			optobj[this.optname] = this.value;
+			storeOption();
+		},false);
+		var note = document.createElement("div");
+		note.setAttribute("class","slotnote");
+		note.textContent = closetabnote;
+		actionsel.parentNode.appendChild(lbl);
+		actionsel.parentNode.appendChild(sel);
+		actionsel.parentNode.appendChild(note);
+		selects.push(sel);
+		showActionSlot(actionsel);
+	}
+	// The container API only takes promises, through browser.* (Firefox only).
+	if(typeof browser === "undefined" || !browser.contextualIdentities)return;
+	browser.contextualIdentities.query({}).then(function(containers){
+		selects.forEach(function(sel){
+			containers.forEach(function(c){
+				addOption(sel,c.cookieStoreId,c.name);
+			});
+			sel.value = optobj[sel.optname] || "current";
+			if(!sel.value)sel.value = "current";
+		});
+	},function(){});
+}
+function addOption(sel,value,text){
+	var opt = document.createElement("option");
+	opt.value = value;
+	opt.textContent = text;
+	sel.appendChild(opt);
+}
+function showActionSlot(actionsel){
+	var row = actionsel.parentNode;
+	var isweb = actionsel.value === "web" || actionsel.value === "webbg";
+	var istab = newtabactions.indexOf(actionsel.value) !== -1;
+	row.querySelector(".urlrow").style.visibility = isweb ? "visible" : "hidden";
+	var ctr = row.querySelector(".ctrselect");
+	if(!ctr)return;
+	ctr.style.visibility = istab ? "visible" : "hidden";
+	row.querySelector(".slotlabel").style.visibility = istab ? "visible" : "hidden";
+	row.querySelector(".slotnote").style.visibility = actionsel.value === "closetab" ? "visible" : "hidden";
+}
 function fillActionSelects(){
 	var selects = document.querySelectorAll("select.actionselect");
 	for(var i = 0; i < selects.length; i++){
@@ -60,6 +126,7 @@ document.addEventListener("DOMContentLoaded",function(e){
 }, false);
 function initOptionsPage(){
 	fillActionSelects();
+	setupContainerRows();
 	var eurlary = optobj.excpetoptionarray;
 	if(eurlary.length > 0){
 		for(var i = 0; i < eurlary.length; i++){
@@ -194,11 +261,7 @@ function initOptionsPage(){
 
 function changeLongPressAction(elem,optname,contname,cs){
 	var val = elem.value;
-	if(val === "web" || val === "webbg"){
-		document.getElementById(contname).style.visibility = "visible";
-	}else{
-		document.getElementById(contname).style.visibility = "hidden";
-	}
+	showActionSlot(elem);
 	if(cs)return;
 	optobj[optname] = val;
 	storeOption();
@@ -337,7 +400,7 @@ function setNumberOption(optname,val){
 	storeOption();
 }
 var closemodedescs = {
-	tree: "Tabs are grouped under the tab they were opened from. Closing one switches to the next tab in its group, then the previous one, then the tab it came from, and repeats up each level. Tabs you opened yourself (new tab, bookmarks, address bar) use Next tab.",
+	tree: "Tabs are grouped under the tab that opened them. Closing one goes to the next tab in its group, then the previous one, then the tab that opened it, repeating up the tree. Tabs you opened yourself use Next tab.",
 	next: "Switches to the tab on the right (below, with vertical tabs). If there is none, switches to the tab on the left (above).",
 	prev: "Switches to the tab you were on before the one you closed. If that tab is gone, uses Next tab.",
 	default: "Leaves it to Firefox, which usually returns to the tab the closed one was opened from, otherwise the tab on the right."

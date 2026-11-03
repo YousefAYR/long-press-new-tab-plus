@@ -48,7 +48,8 @@
     "clipboardWrite",
     "clipboardRead",
     "cookies",
-    "storage"
+    "storage",
+    "contextualIdentities"
   ],
   "version": "3.3.2"
 }

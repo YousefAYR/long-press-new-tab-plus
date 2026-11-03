@@ -35,8 +35,8 @@
 				</div>
 			</div>
 			<div id="blockmenucontainer" style="width:420px;margin:6px auto 0;font-size:13px;text-align:left;">
-				<label><input type="checkbox" id="blockmenu"> Block the context menu on links so right-hold works (macOS)</label>
-				<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">macOS opens the context menu as soon as the button goes down, so holding can't work unless it's blocked. With this on, a quick right-click on a link shows no context menu. Shift+right-click or Ctrl+click still opens it. Leave it off on Windows, where a quick right-click already shows the context menu.</div>
+				<label><input type="checkbox" id="blockmenu"> Block the context menu so right-hold works (macOS)</label>
+				<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">macOS opens the context menu as soon as you press, so holding needs it blocked. A quick right-click on a link then shows no menu; Shift+right-click or Ctrl+click still opens it. Not needed on Windows.</div>
 			</div>
 		</div>
 		<div style="padding:35px 0 0 0">
@@ -58,7 +58,7 @@
 				<div id="closemodedesc" style="font-size:12px;color:#666;width:420px;margin:8px auto 0;line-height:1.5;"></div>
 				<div id="selfparentcontainer" style="width:420px;margin:12px auto 0;font-size:13px;">
 					<label><input type="checkbox" id="selfparent"> Treat tabs I open myself as children of the current tab</label>
-					<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">New tabs, bookmarks and address-bar tabs are grouped under the tab you were on, so closing one returns there. Restored windows and tabs are left out.</div>
+					<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">New tabs, bookmarks and address-bar tabs go under the tab you were on, so closing one returns there. Restored tabs are left out.</div>
 				</div>
 			</div>
 		</div>
@@ -68,7 +68,7 @@
 		<label><input type="checkbox" id="enabledrag">Enabled</label>
 		<div style="display:none" id="dragcontainer">
 			<div style="padding:25px 0 0 0">
-				<div class="actionrow" style="--labelw:55px;">
+				<div class="actionrow" style="--labelw:130px;">
 					<label>Up</label>
 					<select id="ddragactionup" class="selectclass actionselect">
 					</select>
@@ -76,7 +76,7 @@
 						<input type="text" id="web_service_duurl_input" placeholder="URL" class="web_service_url_input">
 					</div>
 				</div>
-				<div class="actionrow" style="--labelw:55px;">
+				<div class="actionrow" style="--labelw:130px;">
 					<label>Down</label>
 					<select id="ddragactiondown" class="selectclass actionselect">
 					</select>
@@ -84,7 +84,7 @@
 						<input type="text" id="web_service_ddurl_input" placeholder="URL" class="web_service_url_input">
 					</div>
 				</div>
-				<div class="actionrow" style="--labelw:55px;">
+				<div class="actionrow" style="--labelw:130px;">
 					<label>Left</label>
 					<select id="ddragactionleft" class="selectclass actionselect">
 					</select>
@@ -92,7 +92,7 @@
 						<input type="text" id="web_service_dlurl_input" placeholder="URL" class="web_service_url_input">
 					</div>
 				</div>
-				<div class="actionrow" style="--labelw:55px;">
+				<div class="actionrow" style="--labelw:130px;">
 					<label>Right</label>
 					<select id="ddragactionright" class="selectclass actionselect">
 					</select>

@@ -23,6 +23,8 @@ document.addEventListener("visibilitychange", function(e){
 function blocksMenu(e){
 	if(!optobj.blockmenu || !optobj.r || optobj.r === "none")return false;
 	if(e.button !== 2 || e.shiftKey || e.ctrlKey)return false;
+	// Close Current Tab works anywhere, so its hold needs the block anywhere too.
+	if(optobj.r === "closetab" && !isEditable(e.target))return true;
 	for(var elem = e.target; elem; elem = elem.parentNode){
 		if(elem.tagName === "A")return true;
 	}
@@ -85,6 +87,8 @@ function addTag(){
 			clearTimeout(eventtimerid);
 			mouseupflag = true;
 		},true);
+		// Moving cancels a hold anywhere on the page, so selecting text still works.
+		window.addEventListener("mousemove",mouseMoveLink,true);
 	}
 }
 function onDrag(e){
@@ -136,11 +140,51 @@ function checkA(elem,button,e,mode){
 		}
 	}else if(elem.tagName&&elem.tagName === "BODY"){
 		delem = null;
+		pressOffLink(button,e);
 	}else if(elem.parentNode){
 		checkA(elem.parentNode,button,e,mode);
 	}else{
 		delem = null;
+		pressOffLink(button,e);
 	}
+}
+// Close Current Tab also works away from links. Text fields and scrollbars are
+// left alone so holding there never closes the tab. Uses the settings the page
+// already has, which are kept current when an action changes.
+function pressOffLink(button,e){
+	var action = [optobj.l,optobj.m,optobj.r][button];
+	if(action !== "closetab" || isEditable(e.target) || onScrollbar(e))return;
+	clearTimeout(eventtimerid);
+	downpos.x = e.x;
+	downpos.y = e.y;
+	eventtimerid = setTimeout(function(){
+		canselclickflag = true;
+		runAction(null,"closetab");
+	},getWaitTime(button));
+}
+function isEditable(elem){
+	if(!elem || !elem.tagName)return false;
+	return elem.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(elem.tagName);
+}
+// Overlay scrollbars (macOS) sit over the content, so a press near the
+// scrolling edge of the page or of any scrollable box counts as the scrollbar.
+var scrollbaredge = 16;
+function onScrollbar(e){
+	var root = document.documentElement;
+	if(e.clientX >= root.clientWidth || e.clientY >= root.clientHeight)return true;
+	for(var el = e.target; el && el.nodeType === 1; el = el.parentElement){
+		var isroot = el === root;
+		var rect = isroot ? {left:0,top:0,right:window.innerWidth,bottom:window.innerHeight} : el.getBoundingClientRect();
+		var style = window.getComputedStyle(el);
+		var canscrolly = isroot ? root.scrollHeight > window.innerHeight
+			: el.scrollHeight > el.clientHeight && /auto|scroll/.test(style.overflowY);
+		var canscrollx = isroot ? root.scrollWidth > window.innerWidth
+			: el.scrollWidth > el.clientWidth && /auto|scroll/.test(style.overflowX);
+		var rtl = style.direction === "rtl";
+		if(canscrolly && (rtl ? e.clientX <= rect.left + scrollbaredge : e.clientX >= rect.right - scrollbaredge))return true;
+		if(canscrollx && e.clientY >= rect.bottom - scrollbaredge)return true;
+	}
+	return false;
 }
 // Per-button and per-direction values apply only when their split option is on.
 function getWaitTime(button){
@@ -179,13 +223,13 @@ function checkPostion(e){
 				var elemType = window.document.activeElement.type;
 				if((elemType != "text") && (elemType != "textarea")){
 					if(flg === "up"){
-						clickEmulate(delem,optobj.du,optobj.duurl);
+						clickEmulate(delem,optobj.du,optobj.duurl,optobj.ductr);
 					}else if(flg === "down"){
-						clickEmulate(delem,optobj.dd,optobj.ddurl);
+						clickEmulate(delem,optobj.dd,optobj.ddurl,optobj.ddctr);
 					}else if(flg === "right"){
-						clickEmulate(delem,optobj.dr,optobj.drurl);
+						clickEmulate(delem,optobj.dr,optobj.drurl,optobj.drctr);
 					}else if(flg === "left"){
-						clickEmulate(delem,optobj.dl,optobj.dlurl);
+						clickEmulate(delem,optobj.dl,optobj.dlurl,optobj.dlctr);
 					}
 				}
 				delem = null;
@@ -217,91 +261,35 @@ function mouseMoveLink(e){
 		}
 	}
 }
-function clickEmulate(elem,button,wurl){
+// Long press passes the mouse button; drag passes the action and its settings.
+function clickEmulate(elem,button,wurl,ctr){
 	if(button === 0){
-		clcik(elem,optobj.l,optobj.lurl);
+		runAction(elem,optobj.l,optobj.lurl,optobj.lctr);
 	}else if(button === 1){
-		clcik(elem,optobj.m,optobj.murl);
+		runAction(elem,optobj.m,optobj.murl,optobj.mctr);
 	}else if(button === 2){
-		clcik(elem,optobj.r,optobj.rurl);	
-	}else if(button === "bg"){
-		chrome.runtime.sendMessage({tab: "newbg",url:elem.href});
-	}else if(button === "bgrel"){
-		chrome.runtime.sendMessage({tab: "newbgrel",url:elem.href});
-	}else if(button === "newrel"){
-		chrome.runtime.sendMessage({tab: "newrel",url:elem.href});
-	}else if(button === "new"){
-		chrome.runtime.sendMessage({tab: "new",url:elem.href});
-	}else if(button === "crnt"){
-		chrome.runtime.sendMessage({tab:"url",url:elem.href});
-	}else if(button === "copy"){
-		chrome.runtime.sendMessage({tab: "copy",url:elem.href});
-	}else if(button === "save"){
-		chrome.runtime.sendMessage({tab: "save",url:elem.href});
-	}else if(button === "web"){
-		flg = false;
-		chrome.runtime.sendMessage({tab:"new",url:wurl+elem.href});
-	}else if(button === "webbg"){
-		flg = false;
-		chrome.runtime.sendMessage({tab:"newbg",url:wurl+elem.href});
+		runAction(elem,optobj.r,optobj.rurl,optobj.rctr);
+	}else{
+		runAction(elem,button,wurl,ctr);
 	}
-	function clcik(elem,no,wurl){
-		var ctrl = false,alt = false,shift = false;
-		var flg = true;
-		if(no === "bg"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"newbg",url:elem.href});
-		}else if(no === "bgrel"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"newbgrel",url:elem.href});
-		}else if(no === "newrel"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"newrel",url:elem.href});
-		}else if(no === "wnd"){
-			shift = true;					
-		}else if(no === "new"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"new",url:elem.href});
-		}else if(no === "crnt"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"url",url:elem.href});
-		}else if(no === "copy"){
-			chrome.runtime.sendMessage({tab:"copy",url:elem.href});
-			flg = false;
-		}else if(no === "save"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"save",url:elem.href});
-		}else if(no === "web"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"new",url:wurl+elem.href});
-		}else if(no === "webbg"){
-			flg = false;
-			chrome.runtime.sendMessage({tab:"newbg",url:wurl+elem.href});
-		}else{
-			flg = false;
-		}
-		if(flg){
-			var types = ['click'];
-			for ( var i = 0, l = types.length; i < l; i++){
-				var clicker = new MouseEvent(types[i], {
-				  'bubbles': true,
-				  'cancelable': true,
-				  'view': window,
-				  'detail': 0,
-				  'screenX': 0,
-				  'screenY': 0,
-				  'clientX': 0,
-				  'clientY': 0,
-				  'ctrlKey': false,
-				  'altKey': false,
-				  'shiftKey': false,
-				  'metaKey': false,
-				  'button': 0,
-				  'relatedTarget': null
-				});
-				elem.dispatchEvent(clicker);
-			}
-		}			
+}
+// New tab actions and the message each sends; they also take a container behavior.
+var newtabactions = {bgrel:"newbgrel",newrel:"newrel",bg:"newbg",new:"new"};
+function runAction(elem,action,wurl,ctr){
+	if(newtabactions[action]){
+		chrome.runtime.sendMessage({tab:newtabactions[action],url:elem.href,ctr:ctr || "current"});
+	}else if(action === "crnt"){
+		chrome.runtime.sendMessage({tab:"url",url:elem.href});
+	}else if(action === "copy"){
+		chrome.runtime.sendMessage({tab:"copy",url:elem.href});
+	}else if(action === "save"){
+		chrome.runtime.sendMessage({tab:"save",url:elem.href});
+	}else if(action === "web"){
+		chrome.runtime.sendMessage({tab:"new",url:wurl+elem.href});
+	}else if(action === "webbg"){
+		chrome.runtime.sendMessage({tab:"newbg",url:wurl+elem.href});
+	}else if(action === "closetab"){
+		chrome.runtime.sendMessage({tab:"close"});
 	}
 }
 addTag()
