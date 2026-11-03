@@ -172,6 +172,29 @@ function createTab(opt,callback){
 		if(callback && tab)callback(tab);
 	});
 }
+// Same fallback as createTab for a deleted container. With backwindowid the
+// window opens unfocused and focus goes back to that window, since macOS may
+// still bring a new window to the front. From macOS full screen the new window
+// gets its own Space and macOS switches to it anyway.
+function createWindow(opt,backwindowid){
+	if(backwindowid)opt.focused = false;
+	chrome.windows.create(opt,function(){
+		if(!chrome.runtime.lastError && backwindowid){
+			chrome.windows.update(backwindowid,{focused:true},function(){
+				void chrome.runtime.lastError;
+			});
+			return;
+		}
+		if(chrome.runtime.lastError && opt.cookieStoreId){
+			if(opt.cookieStoreId !== "firefox-default"){
+				opt.cookieStoreId = "firefox-default";
+			}else{
+				delete opt.cookieStoreId;
+			}
+			createWindow(opt,backwindowid);
+		}
+	});
+}
 // Open a tab the way Firefox's "Open Link in New Tab" does: linked to the
 // source tab, placed after the tabs already opened from it, in the chosen container.
 function openRelatedTab(url,srctab,active,ctr){
@@ -447,6 +470,16 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         sendResponse({});
     }else if(request.tab == "newrel"){
 		openRelatedTab(request.url,sender.tab,true,request.ctr);
+        sendResponse({});
+    }else if(request.tab == "newwindow" || request.tab == "newwindowbg"){
+		// From a private window the new window is private too, as in Firefox.
+		var winopt = withContainer({url:request.url},sender.tab,request.ctr);
+		if(sender.tab.incognito)winopt.incognito = true;
+		createWindow(winopt,request.tab == "newwindowbg" ? sender.tab.windowId : null);
+        sendResponse({});
+    }else if(request.tab == "privatewindow" || request.tab == "privatewindowbg"){
+		// Needs "Run in Private Windows" allowed for this add-on.
+		createWindow({url:request.url,incognito:true},request.tab == "privatewindowbg" ? sender.tab.windowId : null);
         sendResponse({});
     }else if(request.tab == "close"){
 		chrome.tabs.remove(sender.tab.id,function(){

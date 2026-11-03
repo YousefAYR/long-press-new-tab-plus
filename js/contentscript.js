@@ -13,16 +13,31 @@ downpos.y = 0;
 
 window.addEventListener("dragstart",onDrag,true);
 window.addEventListener('drop', checkPostion,true);
+// Firefox only sends "drop" to a page that accepts the drag while it passes
+// over. Accept it only for a link drag with Drag Link on, so other drag and
+// drop on the page is untouched.
+function acceptLinkDrag(e){
+	if(delem && !cancelflg && optobj && optobj.mdrag){
+		e.preventDefault();
+	}
+}
+window.addEventListener("dragenter",acceptLinkDrag,true);
+window.addEventListener("dragover",acceptLinkDrag,true);
 document.addEventListener("visibilitychange", function(e){
 	canselclickflag = false;
 	mouseupflag = true;
 	clearTimeout(eventtimerid);
 }, false);
+// A press with Shift, Ctrl, Option/Alt or Cmd held is Firefox's own (new tab,
+// context menu, ...), so it never starts a long-press or blocks the menu.
+function hasModifier(e){
+	return e.shiftKey || e.ctrlKey || e.altKey || e.metaKey;
+}
 // The menu opens on button down on macOS, so it is blocked on links up front
 // when that option is on. Shift+right-click and Ctrl+click still open it.
 function blocksMenu(e){
 	if(!optobj.blockmenu || !optobj.r || optobj.r === "none")return false;
-	if(e.button !== 2 || e.shiftKey || e.ctrlKey)return false;
+	if(e.button !== 2 || hasModifier(e))return false;
 	// Close Current Tab works anywhere, so its hold needs the block anywhere too.
 	if(optobj.r === "closetab" && !isEditable(e.target))return true;
 	for(var elem = e.target; elem; elem = elem.parentNode){
@@ -113,6 +128,7 @@ function checkA(elem,button,e,mode){
 		chrome.runtime.sendMessage({stat:"init",url:host},function(resp){
 			if(!resp.opt || !resp.opt.l)return;
 			optobj = resp.opt;
+			if(hasModifier(e))return;
 			if(button === 0 && optobj.l !== "none"){
 				press(e,elem,button);
 			}else if(button === 1 && optobj.m !== "none"){
@@ -153,7 +169,7 @@ function checkA(elem,button,e,mode){
 // already has, which are kept current when an action changes.
 function pressOffLink(button,e){
 	var action = [optobj.l,optobj.m,optobj.r][button];
-	if(action !== "closetab" || isEditable(e.target) || onScrollbar(e))return;
+	if(action !== "closetab" || hasModifier(e) || isEditable(e.target) || onScrollbar(e))return;
 	clearTimeout(eventtimerid);
 	downpos.x = e.x;
 	downpos.y = e.y;
@@ -273,8 +289,9 @@ function clickEmulate(elem,button,wurl,ctr){
 		runAction(elem,button,wurl,ctr);
 	}
 }
-// New tab actions and the message each sends; they also take a container behavior.
-var newtabactions = {bgrel:"newbgrel",newrel:"newrel",bg:"newbg",new:"new"};
+// New tab and window actions and the message each sends; they also take a
+// container behavior.
+var newtabactions = {bgrel:"newbgrel",newrel:"newrel",bg:"newbg",new:"new",window:"newwindow",windowbg:"newwindowbg"};
 function runAction(elem,action,wurl,ctr){
 	if(newtabactions[action]){
 		chrome.runtime.sendMessage({tab:newtabactions[action],url:elem.href,ctr:ctr || "current"});
@@ -288,6 +305,8 @@ function runAction(elem,action,wurl,ctr){
 		chrome.runtime.sendMessage({tab:"new",url:wurl+elem.href});
 	}else if(action === "webbg"){
 		chrome.runtime.sendMessage({tab:"newbg",url:wurl+elem.href});
+	}else if(action === "privatewindow" || action === "privatewindowbg"){
+		chrome.runtime.sendMessage({tab:action,url:elem.href});
 	}else if(action === "closetab"){
 		chrome.runtime.sendMessage({tab:"close"});
 	}

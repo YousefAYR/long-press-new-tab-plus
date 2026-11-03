@@ -33,6 +33,10 @@ var actionoptions = [
 	["newrel","Open Link in New Tab (Foreground)"],
 	["bg","New Tab at End (Background)"],
 	["new","New Tab at End (Foreground)"],
+	["window","Open Link in New Window (Foreground)"],
+	["windowbg","Open Link in New Window (Background)"],
+	["privatewindow","Open Link in New Private Window (Foreground)"],
+	["privatewindowbg","Open Link in New Private Window (Background)"],
 	["crnt","Open in Current Tab (Forced)"],
 	["closetab","Close Current Tab"],
 	["save","Save Link"],
@@ -45,8 +49,17 @@ var actionrows = [
 	["dragactionleft","l"],["dragactionmiddle","m"],["dragactionright","r"],
 	["ddragactionup","du"],["ddragactiondown","dd"],["ddragactionleft","dl"],["ddragactionright","dr"]
 ];
-var newtabactions = ["bgrel","newrel","bg","new"];
-var closetabnote = "Works anywhere except text fields and scrollbars. Moving the mouse cancels it.";
+var newtabactions = ["bgrel","newrel","bg","new","window","windowbg"];
+// Notes under the container dropdown, for new window actions.
+var extranotes = {
+	windowbg: "Opens in foreground from macOS full screen."
+};
+// Short notes shown in the slot for actions that need explaining.
+var slotnotes = {
+	closetab: "Works anywhere except text fields and scrollbars. Moving the mouse cancels it.",
+	privatewindow: "Needs Run in Private Windows allowed for this add-on in Add-ons.",
+	privatewindowbg: "Needs Run in Private Windows allowed. Opens in foreground from macOS full screen."
+};
 // Under each action dropdown is one slot: the URL box for a web service, or the
 // container behavior for a new tab action.
 function setupContainerRows(){
@@ -69,10 +82,13 @@ function setupContainerRows(){
 		},false);
 		var note = document.createElement("div");
 		note.setAttribute("class","slotnote");
-		note.textContent = closetabnote;
 		actionsel.parentNode.appendChild(lbl);
 		actionsel.parentNode.appendChild(sel);
 		actionsel.parentNode.appendChild(note);
+		// A line under the container dropdown, for actions that also need a note.
+		var extra = document.createElement("div");
+		extra.setAttribute("class","slotextranote");
+		actionsel.parentNode.appendChild(extra);
 		selects.push(sel);
 		showActionSlot(actionsel);
 	}
@@ -103,7 +119,13 @@ function showActionSlot(actionsel){
 	if(!ctr)return;
 	ctr.style.visibility = istab ? "visible" : "hidden";
 	row.querySelector(".slotlabel").style.visibility = istab ? "visible" : "hidden";
-	row.querySelector(".slotnote").style.visibility = actionsel.value === "closetab" ? "visible" : "hidden";
+	var note = row.querySelector(".slotnote");
+	note.textContent = slotnotes[actionsel.value] || "";
+	note.style.visibility = slotnotes[actionsel.value] ? "visible" : "hidden";
+	// Takes a line only while shown.
+	var extra = row.querySelector(".slotextranote");
+	extra.textContent = extranotes[actionsel.value] || "";
+	extra.style.display = extranotes[actionsel.value] ? "block" : "none";
 }
 function fillActionSelects(){
 	var selects = document.querySelectorAll("select.actionselect");
