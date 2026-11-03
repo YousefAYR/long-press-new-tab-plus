@@ -48,12 +48,15 @@ chrome.runtime.onMessage.addListener(function(request){
 	if(request.stat === "optchanged")loadSettings();
 });
 // After a middle-button hold runs its action, stop Firefox's own middle-click
-// from also opening the link when the button is released.
+// from also opening the link when the button is released. This has its own
+// flag because a foreground tab hides the page, which clears canselclickflag.
+var middleheldflag = false;
 window.addEventListener("auxclick",function(e){
-	if(e.button === 1 && canselclickflag){
+	if(e.button === 1 && (canselclickflag || middleheldflag)){
 		e.preventDefault();
 		e.stopPropagation();
 		canselclickflag = false;
+		middleheldflag = false;
 	}
 },true);
 function addTag(){
@@ -62,6 +65,7 @@ function addTag(){
 		window.addEventListener("mousedown",function(e){
 			clearTimeout(eventtimerid);
 			canselclickflag = false;
+			middleheldflag = false;
 			mouseupflag = false;
 			cancelflg = false;
 			delem = null;
@@ -120,6 +124,7 @@ function checkA(elem,button,e,mode){
 					eventtimerid = setTimeout(function(){
 						clickEmulate(elem,button);
 						canselclickflag = true;
+						if(button === 1)middleheldflag = true;
 					},getWaitTime(button));
 				}
 			}

@@ -50,10 +50,16 @@ function fillActionSelects(){
 		}
 	}
 }
+// Settings live in extension storage, which survives restarts and clearing
+// history (localStorage does not).
 document.addEventListener("DOMContentLoaded",function(e){
+	chrome.storage.local.get("opt_obj",function(stored){
+		if(stored && stored.opt_obj)optobj = stored.opt_obj;
+		initOptionsPage();
+	});
+}, false);
+function initOptionsPage(){
 	fillActionSelects();
-	var opt = 	localStorage.getItem("opt_obj");
-	if(opt)optobj = JSON.parse(opt);
 	var eurlary = optobj.excpetoptionarray;
 	if(eurlary.length > 0){
 		for(var i = 0; i < eurlary.length; i++){
@@ -175,7 +181,7 @@ document.addEventListener("DOMContentLoaded",function(e){
 		document.getElementById("enabledrag").checked = true;
 		document.getElementById("dragcontainer").style.display = "block"
 	}
-}, false);
+}
 
 
 
@@ -416,9 +422,7 @@ function clickCloseImg2(e){
 function clickAddButton2(){
 	createExceptItem("");
 }
+// The background page picks up the change through storage.onChanged.
 function storeOption(){
-	localStorage.setItem("opt_obj",JSON.stringify(optobj));
-    chrome.runtime.getBackgroundPage(function(bgpage){
-		bgpage.setOption(optobj);
-	});
+	chrome.storage.local.set({opt_obj:optobj});
 }

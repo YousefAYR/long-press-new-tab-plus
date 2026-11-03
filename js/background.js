@@ -5,6 +5,8 @@ var removedttl = 60000;
 var lastremovedsweep = 0;
 var activehistory = {};
 var optbroadcasttimer = null;
+var optionloaded = false;
+var optionwaiting = [];
 function checkExceptList(url,list){
 	if(list){
 		var len = list.length;
@@ -68,27 +70,59 @@ function broadcastOptionChange(){
 function getCloseMode(){
 	return optobj.closemode || "tree";
 }
-function loadOption(){
-	var lclobj = localStorage.getItem("opt_obj");
-	if(lclobj){
-		optobj = JSON.parse(lclobj);
+// Settings live in extension storage, which survives restarts and clearing
+// history. Settings saved by older versions in localStorage are moved over once.
+function loadOption(callback){
+	chrome.storage.local.get("opt_obj",function(stored){
+		var lclobj = null;
+		try{
+			lclobj = localStorage.getItem("opt_obj");
+		}catch(e){}
+		if(stored && stored.opt_obj){
+			optobj = stored.opt_obj;
+		}else if(lclobj){
+			optobj = JSON.parse(lclobj);
+			chrome.storage.local.set({opt_obj:optobj});
+		}else{
+			setDefaultOption();
+		}
+		if(lclobj){
+			try{
+				localStorage.removeItem("opt_obj");
+			}catch(e){}
+		}
+		optionloaded = true;
+		var waiting = optionwaiting;
+		optionwaiting = [];
+		waiting.forEach(function(fn){fn()});
+		if(callback)callback();
+	});
+}
+function whenOptionLoaded(fn){
+	if(optionloaded){
+		fn();
 	}else{
-		optobj.excpetoptionarray = [];
-		optobj.l = "bgrel";
-		optobj.m = "none";
-		optobj.r = "none";
-		optobj.waittime = 350;
-		optobj.mdrag = false;
-		optobj.dl = "none";
-		optobj.dr = "none";
-		optobj.du = "none";
-		optobj.dd = "none";
-		optobj.dxval = 100;
-		optobj.splitwait = false;
-		optobj.splitdx = false;
-		optobj.blockmenu = false;
-		optobj.closemode = "tree";
-		optobj.selfparent = false;
+		optionwaiting.push(fn);
+	}
+}
+function setDefaultOption(){
+	optobj = {};
+	optobj.excpetoptionarray = [];
+	optobj.l = "bgrel";
+	optobj.m = "none";
+	optobj.r = "none";
+	optobj.waittime = 350;
+	optobj.mdrag = false;
+	optobj.dl = "none";
+	optobj.dr = "none";
+	optobj.du = "none";
+	optobj.dd = "none";
+	optobj.dxval = 100;
+	optobj.splitwait = false;
+	optobj.splitdx = false;
+	optobj.blockmenu = false;
+	optobj.closemode = "tree";
+	optobj.selfparent = false;
         optobj.lurl = "";
         optobj.murl = "";
         optobj.rurl = "";
@@ -96,7 +130,6 @@ function loadOption(){
         optobj.drurl = "";
         optobj.duurl = "";
         optobj.ddurl = "";
-	}
 }
 function downloadItems(url){
     var opt = {saveAs:true,url:url};
@@ -323,16 +356,22 @@ chrome.tabs.onRemoved.addListener(function(id,info){
 	}
 	if(!info.isWindowClosing)onTabsChanged(info.windowId);
 });
-loadOption();
+chrome.storage.onChanged.addListener(function(changes,area){
+	if(area === "local" && changes.opt_obj && changes.opt_obj.newValue){
+		setOption(changes.opt_obj.newValue);
+	}
+});
 // Build the tree from the openers Firefox still reports, start each window's
 // history with its current tab, then set its successor.
-chrome.tabs.query({},function(tabs){
-	if(chrome.runtime.lastError)return;
-	tabs.forEach(rememberParent);
-	tabs.forEach(function(t){
-		if(!t.active)return;
-		rememberActive(t.windowId,t.id);
-		updateSuccessor(t.windowId);
+loadOption(function(){
+	chrome.tabs.query({},function(tabs){
+		if(chrome.runtime.lastError)return;
+		tabs.forEach(rememberParent);
+		tabs.forEach(function(t){
+			if(!t.active)return;
+			rememberActive(t.windowId,t.id);
+			updateSuccessor(t.windowId);
+		});
 	});
 });
 function copyStrings(str){
@@ -349,13 +388,15 @@ function copyStrings(str){
 }
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if(request.stat == "init"){
-		loadOption();
 		var url = request.url;
-		if(!checkExceptList(url,optobj.excpetoptionarray)){
-	        sendResponse({request: "stat",opt:optobj});
-		}else{
-	        sendResponse({});
-		}
+		whenOptionLoaded(function(){
+			if(!checkExceptList(url,optobj.excpetoptionarray)){
+		        sendResponse({request: "stat",opt:optobj});
+			}else{
+		        sendResponse({});
+			}
+		});
+		return true;
     }else if(request.tab == "url"){
 		var url = request.url;
 		var tabid = sender.tab.id;

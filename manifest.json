@@ -47,7 +47,8 @@
     "downloads",
     "clipboardWrite",
     "clipboardRead",
-    "cookies"
+    "cookies",
+    "storage"
   ],
   "version": "3.3.2"
 }
