@@ -1,122 +1,30 @@
 <!DOCTYPE html>
-<html dir="ltr">
+<html dir="ltr" lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Options</title>
-    <link href="css/options.css" rel="stylesheet">
-    <script src="js/options.js"></script>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Long Press New Tab Plus Settings</title>
+	<link rel="icon" href="img/icon32.png" sizes="32x32">
+	<link rel="icon" href="img/icon128.png" sizes="128x128">
+	<link href="css/options.css" rel="stylesheet">
+	<script src="js/exceptions.js"></script>
+	<script src="js/options.js"></script>
 </head>
 <body>
-	<div style="text-align: center;margin: auto;border: solid 1px #ccc; border-radius: 6px; padding: 0 0 90px 0; width: 700px;">
-		<h3>Long Press</h3>
-		<div style="padding:15px 0 0 0;text-align: center;">
-			<div class="actionrow" style="--labelw:225px;">
-				<label>Left mouse button press</label>
-				<select id="dragactionleft" class="selectclass actionselect">
-				</select>
-				<div class="urlrow" id="web_service_lurl_container" style="visibility:hidden;">
-					<input type="text" id="web_service_lurl_input" placeholder="URL" class="web_service_url_input">
-				</div>
-			</div>
-			<div class="actionrow" style="--labelw:225px;">
-				<label>Middle mouse button press</label>
-				<select id="dragactionmiddle" class="selectclass actionselect">
-				</select>
-				<div class="urlrow" id="web_service_murl_container" style="visibility:hidden;">
-					<input type="text" id="web_service_murl_input" placeholder="URL" class="web_service_url_input">
-				</div>
-			</div>
-			<div class="actionrow" style="--labelw:225px;">
-				<label>Right mouse button press</label>
-				<select id="dragactionright" class="selectclass actionselect">
-				</select>
-				<div class="urlrow" id="web_service_rurl_container" style="visibility:hidden;">
-					<input type="text" id="web_service_rurl_input" placeholder="URL" class="web_service_url_input">
-				</div>
-			</div>
-			<div id="blockmenucontainer" style="width:420px;margin:6px auto 0;font-size:13px;text-align:left;">
-				<label><input type="checkbox" id="blockmenu"> Block the context menu so right-hold works (macOS)</label>
-				<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">macOS opens the context menu as soon as you press, so holding needs it blocked. A quick right-click on a link then shows no menu; right-click with Shift, Ctrl, Option or Cmd, or Ctrl+click, still opens it. Not needed on Windows.</div>
-			</div>
+	<header class="topbar">
+		<img src="img/icon128.png" class="logo" alt="" width="40" height="40">
+		<div class="title">
+			<h1>Long Press New Tab Plus</h1>
+			<span class="version">Version <span id="version"></span></span>
 		</div>
-		<div style="padding:35px 0 0 0">
-			<div style="text-align: center;">
-				<label style="font-size:13px;">Long-press duration</label><br>
-				<div id="waitrows"></div>
-				<label class="splitlabel"><input type="checkbox" id="splitwait"> Use a separate duration for each mouse button</label>
-			</div>
+		<div class="switches">
+			<label class="theme-switch">
+				<span class="switch-label">Theme</span>
+				<select id="theme" class="control"></select>
+			</label>
+			<button type="button" id="open-tab" class="button" hidden>Open Preferences in New Tab</button>
 		</div>
-		<div style="padding:35px 0 0 25px">
-			<div style="text-align: center;">
-				<label style="font-size:13px;">After closing a tab, switch to</label><br>
-				<select id="closemode" class="selectclass" style="margin-top: 8px;">
-					<option value="tree" selected>Tree order</option>
-					<option value="next">Next tab</option>
-					<option value="prev">Previously active tab</option>
-					<option value="default">Firefox default</option>
-				</select>
-				<div id="closemodedesc" style="font-size:12px;color:#666;width:420px;margin:8px auto 0;line-height:1.5;"></div>
-				<div id="selfparentcontainer" style="width:420px;margin:12px auto 0;font-size:13px;">
-					<label><input type="checkbox" id="selfparent"> Treat tabs I open myself as children of the current tab</label>
-					<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">New tabs, bookmarks and address-bar tabs go under the tab you were on, so closing one returns there. Restored tabs are left out.</div>
-				</div>
-			</div>
-		</div>
-	</div>
-	<div style="text-align: center;margin: auto;border: solid 1px #ccc; border-radius: 6px; padding: 0 0 90px 0; width: 700px;margin-top:44px">
-		<h3>Drag Link</h3>
-		<label><input type="checkbox" id="enabledrag">Enabled</label>
-		<div style="display:none" id="dragcontainer">
-			<div style="padding:25px 0 0 0">
-				<div class="actionrow" style="--labelw:130px;">
-					<label>Up</label>
-					<select id="ddragactionup" class="selectclass actionselect">
-					</select>
-					<div class="urlrow" id="web_service_duurl_container" style="visibility:hidden;">
-						<input type="text" id="web_service_duurl_input" placeholder="URL" class="web_service_url_input">
-					</div>
-				</div>
-				<div class="actionrow" style="--labelw:130px;">
-					<label>Down</label>
-					<select id="ddragactiondown" class="selectclass actionselect">
-					</select>
-					<div class="urlrow" id="web_service_ddurl_container" style="visibility:hidden;">
-						<input type="text" id="web_service_ddurl_input" placeholder="URL" class="web_service_url_input">
-					</div>
-				</div>
-				<div class="actionrow" style="--labelw:130px;">
-					<label>Left</label>
-					<select id="ddragactionleft" class="selectclass actionselect">
-					</select>
-					<div class="urlrow" id="web_service_dlurl_container" style="visibility:hidden;">
-						<input type="text" id="web_service_dlurl_input" placeholder="URL" class="web_service_url_input">
-					</div>
-				</div>
-				<div class="actionrow" style="--labelw:130px;">
-					<label>Right</label>
-					<select id="ddragactionright" class="selectclass actionselect">
-					</select>
-					<div class="urlrow" id="web_service_drurl_container" style="visibility:hidden;">
-						<input type="text" id="web_service_drurl_input" placeholder="URL" class="web_service_url_input">
-					</div>
-				</div>
-			</div>
-			<div style="padding:35px 0 0 0">
-				<div style="text-align: center;">
-					<label style="font-size:13px;">Detection Start</label><br>
-					<div id="dxrows"></div>
-					<label class="splitlabel"><input type="checkbox" id="splitdx"> Use a separate distance for each direction</label>
-				</div>
-			</div>
-		</div>
-	</div>
-	<div style="margin: auto;border-radius: 6px; padding: 0 0 90px 0; width: 700px;margin-top:64px">
-		<div style="padding:45px 0 0 25px">
-			<div style="text-align: center;">
-	            <div>Exceptions<img src="img/add.png" id="addbutton2"></div>
-	            <div id="exceptpopupllist"></div>
-			</div>
-		</div>
-	</div>
+	</header>
+	<main id="app"></main>
 </body>
 </html>

@@ -4,6 +4,7 @@ var cancelflg = false;
 var addeventflag = false;
 var eventtimerid = null;
 var canselclickflag = false;
+var pressimg = null;
 var mouseupflag = true;
 var X,Y;
 var optobj = {};
@@ -13,13 +14,36 @@ downpos.y = 0;
 
 window.addEventListener("dragstart",onDrag,true);
 window.addEventListener('drop', checkPostion,true);
+]var DRAG_KEYS = {up:"du",down:"dd",left:"dl",right:"dr"};
+]function onLinkImage(){
+	return !!(pressimg && delem && delem.contains(pressimg));
+}
+function skipsImage(key){
+	return onLinkImage() && (!optobj[key] || optobj[key] === "none" || (optobj[key + "img"] || "skip") === "skip");
+}
+
+function draggedLink(){
+	if(!delem || cancelflg || !optobj || !optobj.mdrag)return null;
+	if(onLinkImage() && Object.keys(DRAG_KEYS).every(function(d){return skipsImage(DRAG_KEYS[d])}))return null;
+	return delem;
+}
 // Firefox only sends "drop" to a page that accepts the drag while it passes
 // over. Accept it only for a link drag with Drag Link on, so other drag and
-// drop on the page is untouched.
+// drop on the page is untouched. With "as soon as the drag passes the
+// distance", the action runs here instead, and the drop is then refused so the
+// link just snaps back when released.
 function acceptLinkDrag(e){
-	if(delem && !cancelflg && optobj && optobj.mdrag){
-		e.preventDefault();
+	if(!draggedLink())return;
+	if(optobj.dragtrigger === "move" && X && Y){
+		var flg = dragDirection(e);
+		if(flg){
+			cancelflg = true;
+			runDragAction(flg);
+			delem = null;
+			return;
+		}
 	}
+	e.preventDefault();
 }
 window.addEventListener("dragenter",acceptLinkDrag,true);
 window.addEventListener("dragover",acceptLinkDrag,true);
@@ -41,9 +65,15 @@ function blocksMenu(e){
 	// Close Current Tab works anywhere, so its hold needs the block anywhere too.
 	if(optobj.r === "closetab" && !isEditable(e.target))return true;
 	for(var elem = e.target; elem; elem = elem.parentNode){
-		if(elem.tagName === "A")return true;
+		if(elem.tagName === "A")return !skipsPressImage(elem,e.target,"r");
 	}
 	return false;
+}
+// Copy Link set to Don't run on an image: a press that starts on an image
+// inside the link is left to Firefox, as if the button had no action.
+function skipsPressImage(link,target,key){
+	return optobj[key] === "copy" && optobj[key + "img"] === "skip" &&
+		!!target && target.tagName === "IMG" && link.contains(target);
 }
 window.addEventListener("contextmenu",function(e){
 	if(canselclickflag || blocksMenu(e)){
@@ -84,6 +114,7 @@ function addTag(){
 			canselclickflag = false;
 			middleheldflag = false;
 			mouseupflag = false;
+			pressimg = e.target && e.target.tagName === "IMG" ? e.target : null;
 			cancelflg = false;
 			delem = null;
 			if(e.button === 0){
@@ -94,9 +125,6 @@ function addTag(){
 				Y = 0;
 			}
 			checkA(e.target,e.button,e)
-			if(e.target&&e.target.tagName === "IMG"){
-				delem = null;
-			}			
 		},true);
 		window.addEventListener("mouseup",function(e){
 			clearTimeout(eventtimerid);
@@ -129,6 +157,7 @@ function checkA(elem,button,e,mode){
 			if(!resp.opt || !resp.opt.l)return;
 			optobj = resp.opt;
 			if(hasModifier(e))return;
+			if(skipsPressImage(elem,e.target,["l","m","r"][button]))return;
 			if(button === 0 && optobj.l !== "none"){
 				press(e,elem,button);
 			}else if(button === 1 && optobj.m !== "none"){
@@ -217,44 +246,44 @@ function getDragDistance(dir){
 	}
 	return optobj.dxval - 0;
 }
+// The direction the drag has gone past its distance in, if any.
+function dragDirection(e){
+	var x = e.screenX;
+	var y = e.screenY;
+	if(y >= (Y+getDragDistance("down"))){
+		return "down";
+	}else if(y <= (Y-getDragDistance("up"))){
+		return "up";
+	}else if(x >= (X+getDragDistance("right"))){
+		return "right";
+	}else if(x <= (X-getDragDistance("left"))){
+		return "left";
+	}
+	return null;
+}
+function runDragAction(flg){
+	var elemType = window.document.activeElement.type;
+	if((elemType == "text") || (elemType == "textarea"))return;
+	var key = DRAG_KEYS[flg];
+	if(!key || skipsImage(key))return;
+	clickEmulate(delem,optobj[key],optobj[key + "url"],optobj[key + "ctr"],optobj[key + "img"]);
+}
+var CLICK_SLOP = 12;
 function checkPostion(e){
-	var flg = null;
 	if(delem&&!cancelflg&&X&&Y){
+		var dragging = draggedLink();
 		cancelflg = true;
-		if(optobj&&optobj.mdrag){
+		if(dragging){
 			e.preventDefault();
 			e.stopPropagation();
-			var x = e.screenX;
-			var y = e.screenY;
-			if(y >= (Y+getDragDistance("down"))){
-				flg = "down";
-			}else if(y <= (Y-getDragDistance("up"))){
-				flg = "up";
-			}else if(x >= (X+getDragDistance("right"))){
-				flg = "right";
-			}else if(x <= (X-getDragDistance("left"))){
-				flg = "left";
-			}
+			var flg = dragDirection(e);
 			if(flg){
-				var elemType = window.document.activeElement.type;
-				if((elemType != "text") && (elemType != "textarea")){
-					if(flg === "up"){
-						clickEmulate(delem,optobj.du,optobj.duurl,optobj.ductr);
-					}else if(flg === "down"){
-						clickEmulate(delem,optobj.dd,optobj.ddurl,optobj.ddctr);
-					}else if(flg === "right"){
-						clickEmulate(delem,optobj.dr,optobj.drurl,optobj.drctr);
-					}else if(flg === "left"){
-						clickEmulate(delem,optobj.dl,optobj.dlurl,optobj.dlctr);
-					}
-				}
-				delem = null;
-			}else{
-				delem = null;
+				runDragAction(flg);
+			}else if(!hasModifier(e) && Math.abs(e.screenX - X) <= CLICK_SLOP && Math.abs(e.screenY - Y) <= CLICK_SLOP){
+				setTimeout(function(){dragging.click()},0);
 			}
-		}else{
-			delem = null;
 		}
+		delem = null;
 	}
 }
 function clickLink(e){
@@ -278,27 +307,63 @@ function mouseMoveLink(e){
 	}
 }
 // Long press passes the mouse button; drag passes the action and its settings.
-function clickEmulate(elem,button,wurl,ctr){
+function clickEmulate(elem,button,wurl,ctr,img){
 	if(button === 0){
-		runAction(elem,optobj.l,optobj.lurl,optobj.lctr);
+		runAction(elem,optobj.l,optobj.lurl,optobj.lctr,optobj.limg);
 	}else if(button === 1){
-		runAction(elem,optobj.m,optobj.murl,optobj.mctr);
+		runAction(elem,optobj.m,optobj.murl,optobj.mctr,optobj.mimg);
 	}else if(button === 2){
-		runAction(elem,optobj.r,optobj.rurl,optobj.rctr);
+		runAction(elem,optobj.r,optobj.rurl,optobj.rctr,optobj.rimg);
 	}else{
-		runAction(elem,button,wurl,ctr);
+		runAction(elem,button,wurl,ctr,img);
 	}
 }
 // New tab and window actions and the message each sends; they also take a
 // container behavior.
 var newtabactions = {bgrel:"newbgrel",newrel:"newrel",bg:"newbg",new:"new",window:"newwindow",windowbg:"newwindowbg"};
-function runAction(elem,action,wurl,ctr){
+
+function copyImage(image,src){
+	pageImageBytes(image).catch(function(){
+		return fetch(src,{credentials:"include"}).then(function(resp){
+			if(!resp.ok)throw new Error(resp.status);
+			return resp.blob();
+		}).then(function(blob){
+			return blob.arrayBuffer().then(function(buf){return {data:buf,type:blob.type}});
+		});
+	}).then(function(bytes){
+		chrome.runtime.sendMessage({tab:"copyimagedata",data:bytes.data,type:bytes.type});
+	},function(){
+		chrome.runtime.sendMessage({tab:"copyimage",url:src});
+	});
+}
+function pageImageBytes(image){
+	return new Promise(function(resolve,reject){
+		var width = image.naturalWidth || image.width;
+		var height = image.naturalHeight || image.height;
+		if(!image.complete || !width || !height)return reject(new Error("not loaded"));
+		var canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+		canvas.getContext("2d").drawImage(image,0,0,width,height);
+		canvas.toBlob(function(blob){
+			if(!blob)return reject(new Error("no image"));
+			blob.arrayBuffer().then(function(buf){resolve({data:buf,type:"image/png"})},reject);
+		},"image/png");
+	});
+}
+function runAction(elem,action,wurl,ctr,img){
 	if(newtabactions[action]){
 		chrome.runtime.sendMessage({tab:newtabactions[action],url:elem.href,ctr:ctr || "current"});
 	}else if(action === "crnt"){
 		chrome.runtime.sendMessage({tab:"url",url:elem.href});
 	}else if(action === "copy"){
-		chrome.runtime.sendMessage({tab:"copy",url:elem.href});
+		var image = pressimg && elem && elem.contains(pressimg) ? pressimg : null;
+		var src = image && (image.currentSrc || image.src);
+		if(src && img === "image"){
+			copyImage(image,src);
+		}else{
+			chrome.runtime.sendMessage({tab:"copy",url:src && img === "imageurl" ? src : elem.href});
+		}
 	}else if(action === "save"){
 		chrome.runtime.sendMessage({tab:"save",url:elem.href});
 	}else if(action === "web"){

@@ -7,37 +7,12 @@ var activehistory = {};
 var optbroadcasttimer = null;
 var optionloaded = false;
 var optionwaiting = [];
-function checkExceptList(url,list){
-	if(list){
-		var len = list.length;
-	    for(var i = 0; i < len; i++){
-	    	var lurl = list[i].url;
-	        var regex = new RegExp(lurl);
-	        if (url.search(regex) != -1) {
-	            return list[i];
-	        }
-		    if(lurl.match(/^(http|https):\/\/.+$/)){
-		    	var idx = url.indexOf(lurl);
-				if(idx == 0){
-					return list[i];
-				}
-		    }else{
-		    	var urlary = url.split("/");
-		    	if(urlary[2]){
-			    	var domain = urlary[2];
-			    	var idx = domain.indexOf(lurl);
-					if(idx == 0){
-						return list[i];
-					}
-			        var regex = new RegExp(lurl);
-			        if (domain.search(regex) != -1) {
-			            return list[i];
-			        }
-		    	}
-		    }
-	    }
-	}
-    return null;
+var exceptioncache = {key:null,rules:[]};
+function isExcepted(url){
+	var lines = optobj.exceptions || [];
+	var key = lines.join("\n");
+	if(key !== exceptioncache.key)exceptioncache = {key:key,rules:compileExceptions(lines)};
+	return matchException(url,exceptioncache.rules) > 0;
 }
 function setOption(opt){
 	var oldmode = getCloseMode();
@@ -54,7 +29,7 @@ function setOption(opt){
 	}
 }
 function pageSettingsKey(){
-	return JSON.stringify([!!optobj.blockmenu,optobj.l,optobj.m,optobj.r,optobj.excpetoptionarray,
+	return JSON.stringify([!!optobj.blockmenu,optobj.l,optobj.m,optobj.r,optobj.exceptions,
 		optobj.waittime,!!optobj.splitwait,optobj.waitl,optobj.waitm,optobj.waitr]);
 }
 function broadcastOptionChange(){
@@ -93,6 +68,11 @@ function loadOption(callback){
 				localStorage.removeItem("opt_obj");
 			}catch(e){}
 		}
+		if(!Array.isArray(optobj.exceptions)){
+			optobj.exceptions = exceptionLinesFrom(optobj);
+			delete optobj.excpetoptionarray;
+			chrome.storage.local.set({opt_obj:optobj});
+		}
 		optionloaded = true;
 		var waiting = optionwaiting;
 		optionwaiting = [];
@@ -109,7 +89,7 @@ function whenOptionLoaded(fn){
 }
 function setDefaultOption(){
 	optobj = {};
-	optobj.excpetoptionarray = [];
+	optobj.exceptions = [];
 	optobj.l = "bgrel";
 	optobj.m = "none";
 	optobj.r = "none";
@@ -122,9 +102,11 @@ function setDefaultOption(){
 	optobj.dxval = 100;
 	optobj.splitwait = false;
 	optobj.splitdx = false;
+	optobj.dragtrigger = "drop";
 	optobj.blockmenu = false;
 	optobj.closemode = "tree";
 	optobj.selfparent = false;
+	optobj.uitheme = "autodarker";
         optobj.lurl = "";
         optobj.murl = "";
         optobj.rurl = "";
@@ -429,6 +411,43 @@ loadOption(function(){
 		});
 	});
 });
+// Copies an image to the clipboard. Content scripts send its bytes (see
+// copyImage there); fetching it here is the last resort. The clipboard takes
+// PNG or JPEG, so other formats (WebP, GIF, SVG...) are drawn and copied as PNG.
+function copyImage(url){
+	fetch(url,{credentials:"include"}).then(function(resp){
+		if(!resp.ok)throw new Error(resp.status);
+		return resp.blob();
+	}).then(copyImageBlob).catch(function(){});
+}
+function copyImageBlob(blob){
+	var png = blob.type === "image/png";
+	var ready = png || blob.type === "image/jpeg" ?
+		blob.arrayBuffer().then(function(buf){return [buf,png ? "png" : "jpeg"]}) :
+		new Promise(function(resolve,reject){
+			var img = new Image();
+			var objecturl = URL.createObjectURL(blob);
+			img.onload = function(){
+				var canvas = document.createElement("canvas");
+				canvas.width = img.naturalWidth || 300;
+				canvas.height = img.naturalHeight || 150;
+				canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+				URL.revokeObjectURL(objecturl);
+				canvas.toBlob(function(out){
+					if(!out)return reject(new Error("not an image"));
+					out.arrayBuffer().then(function(buf){resolve([buf,"png"])},reject);
+				},"image/png");
+			};
+			img.onerror = function(){
+				URL.revokeObjectURL(objecturl);
+				reject(new Error("not an image"));
+			};
+			img.src = objecturl;
+		});
+	return ready.then(function(data){
+		return browser.clipboard.setImageData(data[0],data[1]);
+	}).catch(function(){});
+}
 function copyStrings(str){
     var inpt = document.createElement("input");
     document.body.appendChild(inpt);
@@ -445,7 +464,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if(request.stat == "init"){
 		var url = request.url;
 		whenOptionLoaded(function(){
-			if(!checkExceptList(url,optobj.excpetoptionarray)){
+			if(!isExcepted(url)){
 		        sendResponse({request: "stat",opt:optobj});
 			}else{
 		        sendResponse({});
@@ -493,5 +512,11 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }else if(request.tab == "copy"){
 		var url = request.url;
 		copyStrings(url);        
+    }else if(request.tab == "copyimagedata"){
+		copyImageBlob(new Blob([request.data],{type:request.type}));
+        sendResponse({});
+    }else if(request.tab == "copyimage"){
+		copyImage(request.url);
+        sendResponse({});
     }
 });

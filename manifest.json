@@ -1,9 +1,10 @@
 {
   "manifest_version": 2,
   "name": "Long Press New Tab Plus",
-  "description": "Open links as background tabs by clicking links and holding",
+  "description": "Hold a link to open it in a new tab next to the current one, or pick another action for each mouse button and drag direction.",
   "background": {
     "scripts": [
+      "js/exceptions.js",
       "js/background.js"
     ]
   },
@@ -37,7 +38,7 @@
     }
   },
   "options_ui": {
-    "open_in_tab": true,
+    "open_in_tab": false,
     "page": "options.html"
   },
   "content_security_policy": "script-src 'self'; object-src 'self'",
@@ -46,10 +47,10 @@
     "tabs",
     "downloads",
     "clipboardWrite",
-    "clipboardRead",
     "cookies",
     "storage",
-    "contextualIdentities"
+    "contextualIdentities",
+    "<all_urls>"
   ],
-  "version": "3.3.2"
+  "version": "4.0.0"
 }
